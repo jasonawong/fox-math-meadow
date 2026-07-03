@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Fox Math Meadow - Three.js Game</title>
+  <style>
+    :root {
+      --cream: #fff8df;
+      --sun: #ffd166;
+      --fox: #ff8b3d;
+      --leaf: #43aa8b;
+      --sky: #9bdcff;
+      --berry: #ef476f;
+      --ink: #25314d;
+      --shadow: rgba(34, 30, 20, 0.22);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: ui-rounded, "SF Pro Rounded", "Nunito", "Comic Sans MS", system-ui, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 50% 0%, #fff4b8 0%, #b7e6ff 36%, #7ac9ff 72%, #75c7a6 100%);
+      touch-action: none;
+      user-select: none;
+    }
+
+    #gameWrap {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hud {
+      position: absolute;
+      z-index: 10;
+      inset: max(12px, env(safe-area-inset-top)) 12px auto 12px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .titleBadge {
+      width: fit-content;
+      padding: 10px 14px;
+      border: 3px solid rgba(255,255,255,0.8);
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(255,248,223,0.95), rgba(255,225,150,0.95));
+      box-shadow: 0 10px 24px var(--shadow);
+      font-weight: 1000;
+      letter-spacing: 0.2px;
+      text-shadow: 0 2px 0 rgba(255,255,255,0.6);
+    }
+
+    .questionBox {
+      max-width: min(760px, calc(100vw - 24px));
+      border-radius: 26px;
+      padding: 14px 18px;
+      background: rgba(255, 248, 223, 0.93);
+      border: 3px solid rgba(255,255,255,0.78);
+      box-shadow: 0 14px 30px var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    #problemText {
+      margin: 0;
+      font-size: clamp(1.55rem, 4vw, 3.1rem);
+      line-height: 1.05;
+      font-weight: 1000;
+    }
+
+    #helperText {
+      margin: 0;
+      font-size: clamp(0.95rem, 2.15vw, 1.25rem);
+      line-height: 1.2;
+      font-weight: 900;
+      color: #47606b;
+    }
+
+    .bottomMessage {
+      position: absolute;
+      z-index: 10;
+      left: 50%;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      width: min(760px, calc(100vw - 28px));
+      padding: 13px 18px;
+      border-radius: 24px;
+      background: rgba(255, 248, 223, 0.92);
+      border: 3px solid rgba(255,255,255,0.78);
+      box-shadow: 0 14px 30px var(--shadow);
+      backdrop-filter: blur(8px);
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .stats {
+      display: flex;
+      gap: 8px;
+      justify-content: end;
+      flex-wrap: wrap;
+      max-width: 280px;
+    }
+
+    .statCard {
+      min-width: 86px;
+      padding: 10px 12px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.84);
+      border: 2px solid rgba(255,255,255,0.9);
+      box-shadow: 0 10px 24px var(--shadow);
+      text-align: center;
+    }
+
+    .statCard b {
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #5c7080;
+    }
+
+    .statCard span {
+      display: block;
+      margin-top: 2px;
+      font-size: 1.4rem;
+      font-weight: 1000;
+    }
+
+    .toast {
+      position: absolute;
+      z-index: 13;
+      left: 50%;
+      top: 36%;
+      transform: translate(-50%, -50%) scale(0.92);
+      opacity: 0;
+      padding: 16px 22px;
+      border-radius: 999px;
+      font-size: clamp(1.2rem, 4vw, 2.4rem);
+      font-weight: 1000;
+      color: white;
+      text-shadow: 0 3px 0 rgba(0,0,0,0.12);
+      background: linear-gradient(135deg, #43aa8b, #ffd166);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.22);
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .toast.wrong {
+      background: linear-gradient(135deg, #ef476f, #f9a03f);
+    }
+
+    .overlay {
+      position: absolute;
+      z-index: 20;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background:
+        radial-gradient(circle at 15% 18%, rgba(255,255,255,0.38), transparent 26%),
+        radial-gradient(circle at 85% 8%, rgba(255, 209, 102, 0.36), transparent 24%),
+        rgba(24, 54, 76, 0.25);
+      backdrop-filter: blur(8px);
+    }
+
+    .overlay.hidden { display: none; }
+
+    .panel {
+      width: min(680px, 95vw);
+      padding: clamp(22px, 4vw, 36px);
+      border-radius: 34px;
+      background: linear-gradient(180deg, rgba(255,248,223,0.98), rgba(255,236,174,0.97));
+      border: 5px solid rgba(255,255,255,0.84);
+      box-shadow: 0 22px 70px rgba(39, 34, 20, 0.32);
+      text-align: center;
+    }
+
+    .panel h1 {
+      margin: 0;
+      font-size: clamp(2.1rem, 7vw, 4rem);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      color: #d95f27;
+      text-shadow: 0 4px 0 rgba(255,255,255,0.85);
+    }
+
+    .panel p {
+      margin: 16px auto 0;
+      max-width: 560px;
+      font-size: clamp(1rem, 2.8vw, 1.25rem);
+      line-height: 1.45;
+      font-weight: 750;
+      color: #455c66;
+    }
+
+    .rules {
+      display: grid;
+      gap: 8px;
+      margin: 18px auto 0;
+      max-width: 520px;
+      text-align: left;
+      font-weight: 850;
+    }
+
+    .rule {
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.58);
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 1000;
+    }
+
+    .primaryBtn {
+      margin-top: 22px;
+      padding: 16px 26px;
+      border-radius: 999px;
+      color: white;
+      font-size: 1.25rem;
+      background: linear-gradient(135deg, #ff8b3d, #ef476f);
+      box-shadow: 0 13px 0 #b8462a, 0 18px 38px rgba(239, 71, 111, 0.32);
+      transform: translateY(0);
+      transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+    }
+
+    .primaryBtn:active {
+      transform: translateY(8px);
+      box-shadow: 0 5px 0 #b8462a, 0 8px 20px rgba(239, 71, 111, 0.28);
+    }
+
+    .controls {
+      position: absolute;
+      z-index: 11;
+      left: 0;
+      right: 0;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      display: none;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 14px;
+      pointer-events: none;
+    }
+
+    .controlCluster {
+      display: flex;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .controlBtn {
+      width: 74px;
+      height: 74px;
+      border-radius: 28px;
+      color: var(--ink);
+      font-size: 2rem;
+      background: rgba(255,255,255,0.74);
+      border: 3px solid rgba(255,255,255,0.9);
+      box-shadow: 0 11px 22px rgba(0,0,0,0.18);
+    }
+
+    .controlBtn.jump {
+      width: 104px;
+      background: rgba(255, 209, 102, 0.84);
+      font-size: 1.28rem;
+      font-weight: 1000;
+    }
+
+    .controlBtn.stop {
+      width: 104px;
+      background: rgba(67, 170, 139, 0.86);
+      color: white;
+      font-size: 1.35rem;
+      text-shadow: 0 2px 0 rgba(0,0,0,0.14);
+    }
+
+    .choiceGrid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(72px, 1fr));
+      gap: 12px;
+      margin: 22px auto 0;
+      max-width: 440px;
+    }
+
+    .choiceBtn {
+      min-height: 74px;
+      border-radius: 24px;
+      color: var(--ink);
+      font-size: clamp(1.7rem, 6vw, 2.7rem);
+      background: rgba(255,255,255,0.82);
+      border: 4px solid rgba(255,255,255,0.92);
+      box-shadow: 0 10px 0 rgba(67, 170, 139, 0.36), 0 18px 28px rgba(0,0,0,0.14);
+      transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+    }
+
+    .choiceBtn:active {
+      transform: translateY(7px);
+      box-shadow: 0 3px 0 rgba(67, 170, 139, 0.36), 0 8px 18px rgba(0,0,0,0.12);
+    }
+
+    .stopPanel h1 {
+      color: #2f9f7f;
+    }
+
+    #stopQuestion {
+      font-size: clamp(1.8rem, 6vw, 3.35rem);
+      line-height: 1.1;
+      font-weight: 1000;
+      color: #25314d;
+    }
+
+    #stopFeedback {
+      min-height: 1.45em;
+    }
+
+    .footerTip {
+      margin-top: 14px;
+      font-size: 0.92rem !important;
+      color: #6b7c85 !important;
+    }
+
+    @media (max-width: 760px), (hover: none) and (pointer: coarse) {
+      .hud {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .stats {
+        max-width: none;
+        justify-content: start;
+      }
+      .statCard {
+        min-width: 74px;
+        padding: 8px 9px;
+      }
+      .titleBadge {
+        padding: 8px 11px;
+        font-size: 0.95rem;
+      }
+      .questionBox {
+        padding: 12px 14px;
+      }
+      .bottomMessage {
+        bottom: max(102px, calc(env(safe-area-inset-bottom) + 102px));
+        padding: 11px 14px;
+        border-radius: 22px;
+      }
+      .controls { display: flex; }
+      .toast { top: 43%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="gameWrap">
+    <div class="hud">
+      <div class="brand">
+        <div class="titleBadge">🦊 Fox Math Meadow</div>
+        <section class="questionBox" aria-live="polite">
+          <h2 id="problemText">Ready?</h2>
+        </section>
+      </div>
+      <div class="stats" aria-label="Game stats">
+        <div class="statCard"><b>Stars</b><span id="starsText">0/12</span></div>
+        <div class="statCard"><b>Score</b><span id="scoreText">0</span></div>
+        <div class="statCard"><b>Hearts</b><span id="livesText">💛💛💛</span></div>
+        <div class="statCard"><b>Stop</b><span id="stopText">Space</span></div>
+      </div>
+    </div>
+
+    <div class="bottomMessage" aria-live="polite">
+      <p id="helperText">Move the fox to the answer lane.</p>
+    </div>
+
+    <div id="toast" class="toast">Great job!</div>
+
+    <div class="controls" aria-label="Touch controls">
+      <div class="controlCluster">
+        <button id="leftBtn" class="controlBtn" aria-label="Move left">◀</button>
+        <button id="rightBtn" class="controlBtn" aria-label="Move right">▶</button>
+      </div>
+      <div class="controlCluster">
+        <button id="stopBtn" class="controlBtn stop" aria-label="Stop Challenge">Stop</button>
+        <button id="jumpBtn" class="controlBtn jump" aria-label="Speed up">Speed</button>
+      </div>
+    </div>
+
+    <div id="startOverlay" class="overlay">
+      <div class="panel">
+        <h1>Fox Math Meadow</h1>
+        <p>Help Fia the fox collect 12 shiny stars by choosing the correct answer path.</p>
+        <div class="rules">
+          <div class="rule">⬅️ ➡️ Move left and right to pick an answer.</div>
+          <div class="rule">Hold ⬆️ or W to help Fia speed up.</div>
+          <div class="rule">Space opens a Stop Challenge. Answer a kindergarten math question to pause the path.</div>
+          <div class="rule">Math is 1st-grade friendly: adding and subtracting up to 20.</div>
+        </div>
+        <button id="startBtn" class="primaryBtn">Start Adventure</button>
+        <p class="footerTip">Tip: On a phone or tablet, use the big buttons at the bottom.</p>
+      </div>
+    </div>
+
+    <div id="stopOverlay" class="overlay hidden">
+      <div class="panel stopPanel">
+        <h1>Fox Stop!</h1>
+        <p id="stopQuestion">2 + 1 = ?</p>
+        <div id="stopChoices" class="choiceGrid" aria-label="Stop challenge answer choices"></div>
+        <p id="stopFeedback" class="footerTip">Pick the answer to help Fia stop safely.</p>
+      </div>
+    </div>
+
+    <div id="endOverlay" class="overlay hidden">
+      <div class="panel">
+        <h1 id="endTitle">Game Over</h1>
+        <p id="endMessage">You helped Fia practice math!</p>
+        <button id="restartBtn" class="primaryBtn">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+    const wrap = document.getElementById('gameWrap');
+    const startOverlay = document.getElementById('startOverlay');
+    const stopOverlay = document.getElementById('stopOverlay');
+    const endOverlay = document.getElementById('endOverlay');
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const endTitle = document.getElementById('endTitle');
+    const endMessage = document.getElementById('endMessage');
+    const problemText = document.getElementById('problemText');
+    const helperText = document.getElementById('helperText');
+    const scoreText = document.getElementById('scoreText');
+    const starsText = document.getElementById('starsText');
+    const livesText = document.getElementById('livesText');
+    const stopText = document.getElementById('stopText');
+    const stopQuestion = document.getElementById('stopQuestion');
+    const stopChoices = document.getElementById('stopChoices');
+    const stopFeedback = document.getElementById('stopFeedback');
+    const toast = document.getElementById('toast');
+
+    const lanes = [-3.1, 0, 3.1];
+    const goalStars = 12;
+    const clock = new THREE.Clock();
+
+    let scene, camera, renderer, fox, currentGate;
+    let playerLane = 1;
+    let targetX = lanes[playerLane];
+    let jumpVelocity = 0;
+    let jumpY = 0;
+    let speedBoost = false;
+    let score = 0;
+    let stars = 0;
+    let lives = 3;
+    let streak = 0;
+    let gameState = 'start';
+    let spawnCooldown = 0;
+    let worldSpeed = 5.2;
+    let activeProblem = null;
+    let stopChallenge = null;
+    let stopTimer = 0;
+    let foxReaction = null;
+    let wrongPauseTimer = 0;
+    let pendingFinish = null;
+    let audioContext = null;
+
+    const decorations = [];
+    const fireflies = [];
+
+    const colors = {
+      fox: 0xff8a32,
+      foxDark: 0xd9572a,
+      cream: 0xfff1c6,
+      nose: 0x1c2332,
+      grass: 0x55c67a,
+      path: 0xdca96b,
+      leaf: 0x43aa8b,
+      bark: 0x8f5d3f,
+      mushroomRed: 0xef476f,
+      mushroomBlue: 0x42a5f5,
+      mushroomYellow: 0xffd166,
+      white: 0xffffff,
+      star: 0xffd166
+    };
+
+    initThree();
+    resetGame(false);
+    animate();
+
+    startBtn.addEventListener('click', () => beginGame());
+    restartBtn.addEventListener('click', () => beginGame());
+
+    document.getElementById('leftBtn').addEventListener('pointerdown', () => moveLane(-1));
+    document.getElementById('rightBtn').addEventListener('pointerdown', () => moveLane(1));
+    document.getElementById('stopBtn').addEventListener('pointerdown', () => handleStopAction());
+    const speedBtn = document.getElementById('jumpBtn');
+    speedBtn.addEventListener('pointerdown', (event) => { event.preventDefault(); setSpeedBoost(true); });
+    speedBtn.addEventListener('pointerup', () => setSpeedBoost(false));
+    speedBtn.addEventListener('pointercancel', () => setSpeedBoost(false));
+    speedBtn.addEventListener('pointerleave', () => setSpeedBoost(false));
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') moveLane(-1);
+      if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') moveLane(1);
+      if (event.key === ' ') {
+        event.preventDefault();
+        if (!event.repeat) handleStopAction();
+        return;
+      }
+      if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
+        event.preventDefault();
+        setSpeedBoost(true);
+      }
+      if ((event.key === 'Enter') && gameState !== 'playing' && gameState !== 'stopChallenge' && gameState !== 'stopped') beginGame();
+    });
+
+    window.addEventListener('keyup', (event) => {
+      if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
+        event.preventDefault();
+        setSpeedBoost(false);
+      }
+    });
+
+    let swipeStartX = null;
+    window.addEventListener('pointerdown', (event) => { swipeStartX = event.clientX; });
+    window.addEventListener('pointerup', (event) => {
+      if (swipeStartX === null) return;
+      const dx = event.clientX - swipeStartX;
+      if (Math.abs(dx) > 45) moveLane(dx > 0 ? 1 : -1);
+      swipeStartX = null;
+    });
+
+    window.addEventListener('resize', onResize);
+
+    function initThree() {
+      scene = new THREE.Scene();
+      scene.fog = new THREE.Fog(0x9bdcff, 20, 92);
+
+      camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 160);
+      camera.position.set(0, 6.2, 10.6);
+      camera.lookAt(0, 1.25, -8);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      wrap.appendChild(renderer.domElement);
+
+      const hemi = new THREE.HemisphereLight(0xfff7d5, 0x487f72, 2.15);
+      scene.add(hemi);
+
+      const sun = new THREE.DirectionalLight(0xffffff, 2.7);
+      sun.position.set(-8, 14, 10);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.camera.left = -18;
+      sun.shadow.camera.right = 18;
+      sun.shadow.camera.top = 18;
+      sun.shadow.camera.bottom = -18;
+      scene.add(sun);
+
+      createWorld();
+      fox = createFox();
+      scene.add(fox);
+    }
+
+    function createWorld() {
+      const ground = new THREE.Group();
+      scene.add(ground);
+
+      const grassMat = new THREE.MeshStandardMaterial({ color: colors.grass, roughness: 0.95, metalness: 0.02 });
+      const pathMat = new THREE.MeshStandardMaterial({ color: colors.path, roughness: 0.92 });
+
+      const grass = new THREE.Mesh(new THREE.PlaneGeometry(80, 160), grassMat);
+      grass.rotation.x = -Math.PI / 2;
+      grass.position.z = -35;
+      grass.receiveShadow = true;
+      ground.add(grass);
+
+      const path = new THREE.Mesh(new THREE.PlaneGeometry(12, 160), pathMat);
+      path.rotation.x = -Math.PI / 2;
+      path.position.set(0, 0.012, -35);
+      path.receiveShadow = true;
+      ground.add(path);
+
+      for (let i = 0; i < 34; i++) {
+        const stripe = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.1, 1.8),
+          new THREE.MeshBasicMaterial({ color: 0xfff0b5, transparent: true, opacity: 0.38 })
+        );
+        stripe.rotation.x = -Math.PI / 2;
+        stripe.position.set(-1.55, 0.025, -75 + i * 4.7);
+        ground.add(stripe);
+        const stripe2 = stripe.clone();
+        stripe2.position.x = 1.55;
+        ground.add(stripe2);
+      }
+
+      for (let i = 0; i < 42; i++) {
+        const decoration = createDecoration();
+        resetDecoration(decoration, true);
+        scene.add(decoration);
+        decorations.push(decoration);
+      }
+
+      for (let i = 0; i < 15; i++) {
+        const cloud = createCloud();
+        cloud.position.set((Math.random() - 0.5) * 45, 10 + Math.random() * 8, -75 + Math.random() * 90);
+        cloud.userData.drift = 0.08 + Math.random() * 0.14;
+        scene.add(cloud);
+        decorations.push(cloud);
+      }
+
+      for (let i = 0; i < 55; i++) {
+        const sparkle = new THREE.Mesh(
+          new THREE.SphereGeometry(0.045 + Math.random() * 0.035, 8, 8),
+          new THREE.MeshBasicMaterial({ color: Math.random() > 0.45 ? 0xfff6a8 : 0xbef7ff, transparent: true, opacity: 0.85 })
+        );
+        sparkle.position.set((Math.random() - 0.5) * 13, 0.8 + Math.random() * 3.8, -80 + Math.random() * 90);
+        sparkle.userData.baseY = sparkle.position.y;
+        sparkle.userData.phase = Math.random() * Math.PI * 2;
+        scene.add(sparkle);
+        fireflies.push(sparkle);
+      }
+    }
+
+    function createDecoration() {
+      const type = Math.random();
+      if (type < 0.42) return createTree();
+      if (type < 0.72) return createFlowerPatch();
+      return createRockOrMushroom();
+    }
+
+    function createTree() {
+      const group = new THREE.Group();
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.17, 0.24, 1.35, 7),
+        new THREE.MeshStandardMaterial({ color: colors.bark, roughness: 0.88 })
+      );
+      trunk.position.y = 0.68;
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      group.add(trunk);
+
+      const leafMat = new THREE.MeshStandardMaterial({ color: randomPick([0x43aa8b, 0x5cc971, 0x2f9f7f]), roughness: 0.88 });
+      for (let i = 0; i < 3; i++) {
+        const crown = new THREE.Mesh(new THREE.ConeGeometry(0.85 - i * 0.11, 1.25, 8), leafMat);
+        crown.position.y = 1.55 + i * 0.55;
+        crown.castShadow = true;
+        crown.receiveShadow = true;
+        group.add(crown);
+      }
+      group.scale.setScalar(0.75 + Math.random() * 0.55);
+      return group;
+    }
+
+    function createFlowerPatch() {
+      const group = new THREE.Group();
+      const stemMat = new THREE.MeshStandardMaterial({ color: 0x3d9c62, roughness: 0.85 });
+      const petalColors = [0xff6b9a, 0xffd166, 0x8ecae6, 0xb8f28f, 0xd6a2ff];
+      const count = 3 + Math.floor(Math.random() * 5);
+      for (let i = 0; i < count; i++) {
+        const flower = new THREE.Group();
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.32, 5), stemMat);
+        stem.position.y = 0.16;
+        flower.add(stem);
+        const petal = new THREE.Mesh(
+          new THREE.SphereGeometry(0.11, 8, 8),
+          new THREE.MeshStandardMaterial({ color: randomPick(petalColors), roughness: 0.72 })
+        );
+        petal.scale.set(1, 0.55, 1);
+        petal.position.y = 0.35;
+        petal.castShadow = true;
+        flower.add(petal);
+        flower.position.set((Math.random() - 0.5) * 1.2, 0, (Math.random() - 0.5) * 1.0);
+        group.add(flower);
+      }
+      return group;
+    }
+
+    function createRockOrMushroom() {
+      const group = new THREE.Group();
+      if (Math.random() < 0.55) {
+        const rock = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(0.32, 0),
+          new THREE.MeshStandardMaterial({ color: 0xb7b2a6, roughness: 0.92 })
+        );
+        rock.scale.set(1.2, 0.62, 0.86);
+        rock.position.y = 0.19;
+        rock.castShadow = true;
+        rock.receiveShadow = true;
+        group.add(rock);
+      } else {
+        const stem = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.09, 0.13, 0.38, 9),
+          new THREE.MeshStandardMaterial({ color: 0xfff1cf, roughness: 0.85 })
+        );
+        stem.position.y = 0.19;
+        stem.castShadow = true;
+        group.add(stem);
+        const cap = new THREE.Mesh(
+          new THREE.SphereGeometry(0.25, 12, 8),
+          new THREE.MeshStandardMaterial({ color: randomPick([0xef476f, 0xff8a32, 0xffd166]), roughness: 0.75 })
+        );
+        cap.scale.set(1.15, 0.45, 1.15);
+        cap.position.y = 0.44;
+        cap.castShadow = true;
+        group.add(cap);
+      }
+      group.scale.setScalar(0.75 + Math.random() * 0.5);
+      return group;
+    }
+
+    function createCloud() {
+      const group = new THREE.Group();
+      const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.72 });
+      const blobs = 4 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < blobs; i++) {
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.75, 12, 10), cloudMat);
+        puff.scale.set(1 + Math.random() * 1.3, 0.55 + Math.random() * 0.35, 0.7 + Math.random() * 0.55);
+        puff.position.set((i - blobs / 2) * 0.8, Math.random() * 0.4, (Math.random() - 0.5) * 0.7);
+        group.add(puff);
+      }
+      group.scale.setScalar(1.3 + Math.random() * 1.4);
+      return group;
+    }
+
+    function resetDecoration(obj, firstTime = false) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const far = firstTime ? -86 + Math.random() * 100 : -92 - Math.random() * 30;
+      obj.position.x = side * (7.4 + Math.random() * 25);
+      obj.position.z = far;
+      obj.rotation.y = Math.random() * Math.PI * 2;
+      if (!obj.userData.drift) obj.position.y = 0;
+    }
+
+    function createFox() {
+      const group = new THREE.Group();
+      group.position.set(0, 0, 0.7);
+      group.rotation.y = 0;
+
+      const foxMat = new THREE.MeshStandardMaterial({ color: colors.fox, roughness: 0.62, metalness: 0.02 });
+      const foxDarkMat = new THREE.MeshStandardMaterial({ color: colors.foxDark, roughness: 0.7 });
+      const creamMat = new THREE.MeshStandardMaterial({ color: colors.cream, roughness: 0.7 });
+      const blackMat = new THREE.MeshStandardMaterial({ color: colors.nose, roughness: 0.5 });
+
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.72, 24, 18), foxMat);
+      body.scale.set(0.9, 0.62, 1.26);
+      body.position.set(0, 0.8, 0.1);
+      body.castShadow = true;
+      body.receiveShadow = true;
+      group.add(body);
+
+      const chest = new THREE.Mesh(new THREE.SphereGeometry(0.36, 18, 14), creamMat);
+      chest.scale.set(1.05, 0.72, 0.45);
+      chest.position.set(0, 0.78, 0.78);
+      chest.castShadow = true;
+      group.add(chest);
+
+      const headPivot = new THREE.Group();
+      headPivot.name = 'headPivot';
+      headPivot.position.set(0, 1.39, -0.55);
+      group.add(headPivot);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 24, 18), foxMat);
+      head.scale.set(0.98, 0.86, 1.0);
+      head.castShadow = true;
+      head.receiveShadow = true;
+      headPivot.add(head);
+
+      const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.27, 16, 12), creamMat);
+      muzzle.scale.set(1.25, 0.72, 0.85);
+      muzzle.position.set(0, -0.12, -0.47);
+      muzzle.castShadow = true;
+      headPivot.add(muzzle);
+
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), blackMat);
+      nose.scale.set(1.2, 0.86, 0.75);
+      nose.position.set(0, -0.07, -0.73);
+      headPivot.add(nose);
+
+      const eyeGeo = new THREE.SphereGeometry(0.055, 10, 10);
+      const leftEye = new THREE.Mesh(eyeGeo, blackMat);
+      leftEye.position.set(-0.2, 0.13, -0.47);
+      const rightEye = leftEye.clone();
+      rightEye.position.x = 0.2;
+      headPivot.add(leftEye, rightEye);
+
+      const cheekMat = new THREE.MeshStandardMaterial({ color: 0xffb59f, roughness: 0.8 });
+      const cheekGeo = new THREE.SphereGeometry(0.06, 10, 10);
+      const cheekL = new THREE.Mesh(cheekGeo, cheekMat);
+      cheekL.position.set(-0.29, -0.08, -0.52);
+      const cheekR = cheekL.clone();
+      cheekR.position.x = 0.29;
+      headPivot.add(cheekL, cheekR);
+
+      for (const side of [-1, 1]) {
+        const ear = new THREE.Group();
+        const outer = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.62, 4), foxMat);
+        outer.rotation.y = Math.PI / 4;
+        outer.position.y = 0.06;
+        outer.castShadow = true;
+        ear.add(outer);
+        const inner = new THREE.Mesh(new THREE.ConeGeometry(0.125, 0.42, 4), creamMat);
+        inner.rotation.y = Math.PI / 4;
+        inner.position.set(0, 0.03, -0.028);
+        ear.add(inner);
+        ear.position.set(side * 0.38, 0.48, 0.03);
+        ear.rotation.z = side * -0.25;
+        ear.rotation.x = -0.05;
+        headPivot.add(ear);
+      }
+
+      const tailPivot = new THREE.Group();
+      tailPivot.name = 'tailPivot';
+      tailPivot.position.set(0.56, 0.82, 0.78);
+      group.add(tailPivot);
+
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.34, 1.62, 18), foxMat);
+      tail.rotation.x = Math.PI / 2.8;
+      tail.rotation.z = -0.72;
+      tail.position.set(0.45, 0.18, 0.45);
+      tail.castShadow = true;
+      tail.receiveShadow = true;
+      tailPivot.add(tail);
+
+      const tailTip = new THREE.Mesh(new THREE.ConeGeometry(0.27, 0.55, 18), creamMat);
+      tailTip.rotation.copy(tail.rotation);
+      tailTip.position.set(0.83, 0.31, 0.87);
+      tailTip.castShadow = true;
+      tailPivot.add(tailTip);
+
+      const legGeo = new THREE.CylinderGeometry(0.1, 0.13, 0.58, 10);
+      const pawGeo = new THREE.SphereGeometry(0.13, 12, 10);
+      const legPivots = [];
+      for (const x of [-0.34, 0.34]) {
+        for (const z of [-0.27, 0.54]) {
+          const legPivot = new THREE.Group();
+          legPivot.position.set(x, 0.64, z);
+
+          const leg = new THREE.Mesh(legGeo, foxDarkMat);
+          leg.position.set(0, -0.29, 0);
+          leg.castShadow = true;
+          legPivot.add(leg);
+
+          const paw = new THREE.Mesh(pawGeo, creamMat);
+          paw.scale.set(1.25, 0.52, 1.0);
+          paw.position.set(0, -0.56, -0.03);
+          paw.castShadow = true;
+          legPivot.add(paw);
+
+          const frontLeg = z < 0;
+          const leftSide = x < 0;
+          legPivot.userData.walkPhase = (frontLeg === leftSide) ? 0 : Math.PI;
+          legPivot.userData.homeZ = z;
+          legPivots.push(legPivot);
+          group.add(legPivot);
+        }
+      }
+
+      group.userData.tailPivot = tailPivot;
+      group.userData.headPivot = headPivot;
+      group.userData.legPivots = legPivots;
+      group.userData.baseScale = 1;
+      return group;
+    }
+
+    function createAnswerGate(problem) {
+      const gateGroup = new THREE.Group();
+      gateGroup.position.z = -54;
+      gateGroup.userData.checked = false;
+      gateGroup.userData.lanes = [];
+
+      const gateColors = [colors.mushroomBlue, colors.mushroomYellow, colors.mushroomRed];
+      for (let i = 0; i < 3; i++) {
+        const answer = problem.choices[i];
+        const gate = new THREE.Group();
+        gate.position.x = lanes[i];
+        gate.userData.lane = i;
+
+        const stem = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.28, 0.38, 1.35, 16),
+          new THREE.MeshStandardMaterial({ color: 0xfff3d7, roughness: 0.82 })
+        );
+        stem.position.y = 0.68;
+        stem.castShadow = true;
+        stem.receiveShadow = true;
+        gate.add(stem);
+
+        const capMat = new THREE.MeshStandardMaterial({ color: gateColors[i], roughness: 0.62, emissive: 0x000000, emissiveIntensity: 0 });
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.72, 24, 14), capMat);
+        cap.scale.set(1.35, 0.42, 1.08);
+        cap.position.y = 1.37;
+        cap.castShadow = true;
+        cap.receiveShadow = true;
+        cap.userData.highlightable = true;
+        cap.userData.lane = i;
+        gate.add(cap);
+
+        const dotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+        for (let d = 0; d < 4; d++) {
+          const dot = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), dotMat);
+          dot.scale.y = 0.35;
+          dot.position.set((Math.random() - 0.5) * 0.95, 1.58, (Math.random() - 0.5) * 0.52 + 0.08);
+          gate.add(dot);
+        }
+
+        const sign = createTextSign(String(answer), {
+          width: 300,
+          height: 190,
+          fontSize: 104,
+          bg: 'rgba(255, 248, 223, 0.97)',
+          border: '#ffffff',
+          text: '#25314d'
+        });
+        sign.position.set(0, 2.28, 0.05);
+        sign.userData.highlightable = true;
+        sign.userData.lane = i;
+        gate.add(sign);
+
+        const star = createStarMesh(0.26, 0xfff070);
+        star.position.set(0, 2.95, 0.02);
+        star.userData.spin = 1 + Math.random();
+        gate.add(star);
+
+        gateGroup.userData.lanes[i] = { answer, gate, cap, sign };
+        gateGroup.add(gate);
+      }
+      return gateGroup;
+    }
+
+    function createTextSign(text, options = {}) {
+      const width = options.width || 320;
+      const height = options.height || 180;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      const radius = 34;
+
+      ctx.clearRect(0, 0, width, height);
+      roundedRect(ctx, 8, 8, width - 16, height - 16, radius);
+      ctx.fillStyle = options.bg || 'rgba(255,255,255,0.92)';
+      ctx.fill();
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = options.border || '#ffffff';
+      ctx.stroke();
+
+      ctx.fillStyle = options.text || '#25314d';
+      ctx.font = `1000 ${options.fontSize || 86}px ui-rounded, Nunito, Comic Sans MS, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(255,255,255,0.8)';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 4;
+      ctx.fillText(text, width / 2, height / 2 + 4);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 1.24), material);
+      return mesh;
+    }
+
+    function roundedRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function createStarMesh(radius = 0.32, color = 0xffd166) {
+      const shape = new THREE.Shape();
+      const points = 5;
+      for (let i = 0; i < points * 2; i++) {
+        const angle = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2;
+        const r = i % 2 === 0 ? radius : radius * 0.45;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
+        if (i === 0) shape.moveTo(x, y);
+        else shape.lineTo(x, y);
+      }
+      shape.closePath();
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.06, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02 });
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.1, emissive: 0x442200, emissiveIntensity: 0.18 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = true;
+      return mesh;
+    }
+
+    function beginGame() {
+      ensureAudio();
+      startOverlay.classList.add('hidden');
+      stopOverlay.classList.add('hidden');
+      endOverlay.classList.add('hidden');
+      resetGame(true);
+      gameState = 'playing';
+      playStartSound();
+    }
+
+    function resetGame(makeQuestion) {
+      score = 0;
+      stars = 0;
+      lives = 3;
+      streak = 0;
+      playerLane = 1;
+      targetX = lanes[playerLane];
+      jumpVelocity = 0;
+      jumpY = 0;
+      speedBoost = false;
+      worldSpeed = 5.2;
+      spawnCooldown = 0;
+      activeProblem = null;
+      stopChallenge = null;
+      stopTimer = 0;
+      foxReaction = null;
+      wrongPauseTimer = 0;
+      pendingFinish = null;
+      stopOverlay.classList.add('hidden');
+      if (fox) {
+        fox.position.set(0, 0, 0.7);
+        fox.rotation.set(0, 0, 0);
+      }
+      if (currentGate) {
+        scene.remove(currentGate);
+        disposeObject(currentGate);
+        currentGate = null;
+      }
+      updateHUD();
+      if (makeQuestion) spawnNewQuestion();
+      else {
+        problemText.textContent = 'Ready?';
+        helperText.textContent = 'Move the fox to the answer lane. Hold Up/W to speed up. Press Space for a Stop Challenge.';
+      }
+    }
+
+    function spawnNewQuestion() {
+      if (currentGate) {
+        scene.remove(currentGate);
+        disposeObject(currentGate);
+      }
+      activeProblem = generateProblem();
+      currentGate = createAnswerGate(activeProblem);
+      scene.add(currentGate);
+      problemText.textContent = activeProblem.text;
+      helperText.textContent = 'Pick the answer lane. Hold Up/W to speed up. Press Space for a Stop Challenge.';
+      updateGateHighlight();
+    }
+
+    function generateProblem() {
+      const type = randomPick(['add10', 'add20', 'subtract10', 'subtract20', 'missing']);
+      let a, b, answer, text;
+
+      if (type === 'add10') {
+        a = randInt(0, 10);
+        b = randInt(0, 10 - a);
+        answer = a + b;
+        text = `${a} + ${b} = ?`;
+      } else if (type === 'add20') {
+        a = randInt(1, 12);
+        b = randInt(1, Math.min(8, 20 - a));
+        answer = a + b;
+        text = `${a} + ${b} = ?`;
+      } else if (type === 'subtract10') {
+        a = randInt(2, 10);
+        b = randInt(0, a);
+        answer = a - b;
+        text = `${a} − ${b} = ?`;
+      } else if (type === 'subtract20') {
+        a = randInt(10, 20);
+        b = randInt(1, Math.min(9, a));
+        answer = a - b;
+        text = `${a} − ${b} = ?`;
+      } else {
+        answer = randInt(1, 9);
+        b = randInt(1, 9);
+        const total = answer + b;
+        text = `? + ${b} = ${total}`;
+      }
+
+      const choices = makeChoices(answer);
+      return { text, answer, choices };
+    }
+
+    function makeChoices(answer) {
+      const set = new Set([answer]);
+      const offsets = shuffle([-3, -2, -1, 1, 2, 3, 4, -4]);
+      for (const offset of offsets) {
+        const value = answer + offset;
+        if (value >= 0 && value <= 20) set.add(value);
+        if (set.size === 3) break;
+      }
+      while (set.size < 3) set.add(randInt(0, 20));
+      return shuffle([...set]);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.033);
+      const elapsed = clock.elapsedTime;
+
+      updateFox(dt, elapsed);
+      updateWorld(dt, elapsed);
+      updateStopTimer(dt);
+      updateGate(dt, elapsed);
+
+      renderer.render(scene, camera);
+    }
+
+    function isForwardMoving() {
+      return gameState === 'playing' && wrongPauseTimer <= 0;
+    }
+
+    function clearAnswerGateForReaction(delay = 0.55) {
+      if (!currentGate) return;
+      scene.remove(currentGate);
+      disposeObject(currentGate);
+      currentGate = null;
+      spawnCooldown = delay;
+    }
+
+    function startFoxReaction(type) {
+      foxReaction = {
+        type,
+        age: 0,
+        duration: type === 'correct' ? 0.92 : 1.05
+      };
+      if (type === 'wrong') {
+        wrongPauseTimer = foxReaction.duration;
+        speedBoost = false;
+      }
+    }
+
+    function updateFox(dt, elapsed) {
+      if (!fox) return;
+
+      if (wrongPauseTimer > 0) {
+        wrongPauseTimer = Math.max(0, wrongPauseTimer - dt);
+      }
+
+      fox.position.x += (targetX - fox.position.x) * Math.min(1, dt * 10.5);
+
+      if (jumpVelocity !== 0 || jumpY > 0) {
+        jumpY += jumpVelocity * dt;
+        jumpVelocity -= 18 * dt;
+        if (jumpY <= 0) {
+          jumpY = 0;
+          jumpVelocity = 0;
+        }
+      }
+
+      const walking = isForwardMoving();
+      const walkCycle = elapsed * (speedBoost ? 13.5 : 9.2);
+      const bob = walking ? Math.abs(Math.sin(walkCycle)) * (speedBoost ? 0.065 : 0.045) : Math.sin(elapsed * 3.5) * 0.012;
+      let reactionHop = 0;
+      let reactionPitch = 0;
+      let reactionRoll = 0;
+      let bodySquash = 1;
+      const headPivot = fox.userData.headPivot;
+
+      if (foxReaction) {
+        foxReaction.age += dt;
+        const progress = THREE.MathUtils.clamp(foxReaction.age / foxReaction.duration, 0, 1);
+        const ease = Math.sin(progress * Math.PI);
+
+        if (foxReaction.type === 'correct') {
+          reactionHop = ease * 1.05;
+          reactionPitch = -ease * 0.42;
+          reactionRoll = Math.sin(progress * Math.PI * 2) * 0.55;
+          bodySquash = 1 + ease * 0.065;
+          if (headPivot) {
+            headPivot.rotation.y += (Math.sin(elapsed * 18) * 0.08 - headPivot.rotation.y) * Math.min(1, dt * 12);
+            headPivot.rotation.z += (Math.sin(progress * Math.PI * 2) * 0.08 - headPivot.rotation.z) * Math.min(1, dt * 12);
+          }
+        } else if (foxReaction.type === 'wrong') {
+          const shake = Math.sin(progress * Math.PI * 10) * (1 - progress) * 0.68;
+          if (headPivot) {
+            headPivot.rotation.y = shake;
+            headPivot.rotation.z = Math.sin(progress * Math.PI * 9) * (1 - progress) * 0.06;
+          }
+          reactionPitch = ease * 0.08;
+          reactionHop = -ease * 0.035;
+          bodySquash = 1 - ease * 0.035;
+        }
+
+        if (progress >= 1) {
+          foxReaction = null;
+          if (headPivot) {
+            headPivot.rotation.y = 0;
+            headPivot.rotation.z = 0;
+          }
+          fox.scale.setScalar(1);
+          if (pendingFinish !== null) {
+            const won = pendingFinish;
+            pendingFinish = null;
+            finishGame(won);
+            return;
+          }
+        }
+      } else if (headPivot) {
+        headPivot.rotation.y += (0 - headPivot.rotation.y) * Math.min(1, dt * 10);
+        headPivot.rotation.z += (0 - headPivot.rotation.z) * Math.min(1, dt * 10);
+      }
+
+      fox.position.y = jumpY + bob + reactionHop;
+      fox.scale.set(1 + (1 - bodySquash) * 0.22, bodySquash, 1 + (1 - bodySquash) * 0.22);
+
+      const turnTarget = THREE.MathUtils.clamp((targetX - fox.position.x) * -0.22, -0.45, 0.45);
+      fox.rotation.y += (turnTarget - fox.rotation.y) * Math.min(1, dt * 8);
+      fox.rotation.x = reactionPitch;
+      fox.rotation.z = (walking ? Math.sin(walkCycle) * 0.025 : Math.sin(elapsed * 2.2) * 0.01) + reactionRoll;
+
+      const legPivots = fox.userData.legPivots || [];
+      for (const leg of legPivots) {
+        const phase = leg.userData.walkPhase || 0;
+        const targetSwing = walking ? Math.sin(walkCycle + phase) * (speedBoost ? 0.78 : 0.58) : 0;
+        const targetBounce = walking ? Math.max(0, Math.sin(walkCycle + phase)) * 0.055 : 0;
+        leg.rotation.x += (targetSwing - leg.rotation.x) * Math.min(1, dt * 16);
+        leg.position.y += ((0.64 + targetBounce) - leg.position.y) * Math.min(1, dt * 18);
+      }
+
+      const tail = fox.userData.tailPivot;
+      if (tail) {
+        const wagSpeed = walking || foxReaction?.type === 'correct' ? (speedBoost ? 12.5 : 8.5) : 4.2;
+        const wagAmount = foxReaction?.type === 'correct' ? 0.45 : (walking ? 0.34 : 0.16);
+        tail.rotation.y = Math.sin(elapsed * wagSpeed) * wagAmount;
+        tail.rotation.z = Math.sin(elapsed * 5.2) * 0.08;
+      }
+    }
+
+    function updateWorld(dt, elapsed) {
+      const moving = isForwardMoving();
+      const idleDrift = (gameState === 'start' || gameState === 'end') ? 1.2 : 0;
+      const speed = moving ? worldSpeed : idleDrift;
+
+      for (const obj of decorations) {
+        if (obj.userData.drift) {
+          obj.position.x += Math.sin(elapsed * obj.userData.drift) * dt * 0.15;
+          obj.position.z += speed * dt * 0.18;
+          if (obj.position.z > 20) obj.position.z = -92 - Math.random() * 28;
+        } else {
+          obj.position.z += speed * dt;
+          if (obj.position.z > 13) resetDecoration(obj, false);
+        }
+      }
+
+      for (const sparkle of fireflies) {
+        sparkle.position.z += speed * dt * 0.75;
+        sparkle.position.y = sparkle.userData.baseY + Math.sin(elapsed * 2 + sparkle.userData.phase) * 0.22;
+        sparkle.material.opacity = 0.45 + Math.sin(elapsed * 3.2 + sparkle.userData.phase) * 0.25;
+        if (sparkle.position.z > 12) {
+          sparkle.position.z = -88 - Math.random() * 20;
+          sparkle.position.x = (Math.random() - 0.5) * 13;
+          sparkle.userData.baseY = 0.8 + Math.random() * 3.8;
+        }
+      }
+    }
+
+    function updateGate(dt, elapsed) {
+      if (gameState !== 'playing') return;
+      if (wrongPauseTimer > 0) {
+        worldSpeed = 0;
+        return;
+      }
+
+      const baseSpeed = 5.2 + stars * 0.18 + streak * 0.05;
+      worldSpeed = speedBoost ? Math.min(13.2, baseSpeed * 1.75) : Math.min(8.7, baseSpeed);
+
+      if (currentGate) {
+        currentGate.position.z += worldSpeed * dt;
+        updateGateHighlight();
+
+        currentGate.traverse((child) => {
+          if (child.userData.spin) child.rotation.z += dt * child.userData.spin * 2.5;
+        });
+
+        if (!currentGate.userData.checked && currentGate.position.z >= 0.75) {
+          currentGate.userData.checked = true;
+          checkAnswer();
+        }
+
+        if (currentGate.position.z > 10) {
+          scene.remove(currentGate);
+          disposeObject(currentGate);
+          currentGate = null;
+          spawnCooldown = 0.75;
+        }
+      } else {
+        spawnCooldown -= dt;
+        if (spawnCooldown <= 0) spawnNewQuestion();
+      }
+    }
+
+    function updateGateHighlight() {
+      if (!currentGate) return;
+      currentGate.userData.lanes.forEach((laneData, laneIndex) => {
+        const selected = laneIndex === playerLane;
+        const cap = laneData.cap;
+        const gate = laneData.gate;
+        if (cap.material.emissive) {
+          cap.material.emissive.setHex(selected ? 0xffffff : 0x000000);
+          cap.material.emissiveIntensity = selected ? 0.18 : 0;
+        }
+        const targetScale = selected ? 1.11 : 1.0;
+        gate.scale.x += (targetScale - gate.scale.x) * 0.25;
+        gate.scale.y += (targetScale - gate.scale.y) * 0.25;
+        gate.scale.z += (targetScale - gate.scale.z) * 0.25;
+      });
+    }
+
+    function checkAnswer() {
+      if (!activeProblem || !currentGate) return;
+      const chosen = currentGate.userData.lanes[playerLane].answer;
+      if (chosen === activeProblem.answer) {
+        stars += 1;
+        streak += 1;
+        const bonus = 10 + Math.min(streak * 2, 20);
+        score += bonus;
+        showToast(randomPick(['Great job!', 'Fantastic!', 'Fox-tastic!', '+1 Star!']), false);
+        burstStars(lanes[playerLane], 2.2, currentGate.position.z);
+        clearAnswerGateForReaction(0.6);
+        startFoxReaction('correct');
+        playCorrectSound();
+      } else {
+        lives -= 1;
+        streak = 0;
+        showToast(`Nice try! It was ${activeProblem.answer}`, true);
+        clearAnswerGateForReaction(0.85);
+        startFoxReaction('wrong');
+        helperText.textContent = 'Fia pauses and shakes her head. Then keep trying!';
+        playWrongSound();
+        cameraShake();
+      }
+      updateHUD();
+
+      if (stars >= goalStars) {
+        pendingFinish = true;
+      } else if (lives <= 0) {
+        pendingFinish = false;
+      }
+    }
+
+    function finishGame(won) {
+      gameState = 'end';
+      speedBoost = false;
+      stopChallenge = null;
+      stopTimer = 0;
+      wrongPauseTimer = 0;
+      pendingFinish = null;
+      stopOverlay.classList.add('hidden');
+      endOverlay.classList.remove('hidden');
+      endTitle.textContent = won ? 'You Won!' : 'Good Practice!';
+      endMessage.textContent = won
+        ? `Fia collected all ${goalStars} stars! Final score: ${score}.`
+        : `Fia found ${stars} stars. Final score: ${score}. Try again and collect more!`;
+      if (won) playWinSound();
+    }
+
+    function moveLane(direction) {
+      if (gameState !== 'playing' && gameState !== 'stopped') return;
+      playerLane = THREE.MathUtils.clamp(playerLane + direction, 0, lanes.length - 1);
+      targetX = lanes[playerLane];
+      updateGateHighlight();
+      playTinyClick();
+    }
+
+    function setSpeedBoost(on) {
+      speedBoost = Boolean(on) && wrongPauseTimer <= 0;
+      if (gameState === 'playing' && wrongPauseTimer <= 0) {
+        helperText.textContent = speedBoost
+          ? 'Speed boost! Keep picking the right answer lane.'
+          : 'Pick the answer lane. Hold Up/W to speed up. Press Space for a Stop Challenge.';
+      }
+    }
+
+    function handleStopAction() {
+      if (gameState === 'playing' && wrongPauseTimer <= 0) {
+        beginStopChallenge();
+      } else if (gameState === 'stopped') {
+        resumeAfterStop(true);
+      }
+    }
+
+    function beginStopChallenge() {
+      if (gameState !== 'playing') return;
+      gameState = 'stopChallenge';
+      speedBoost = false;
+      stopTimer = 0;
+      stopChallenge = generateKindergartenStopProblem();
+      stopQuestion.textContent = stopChallenge.text;
+      stopFeedback.textContent = 'Pick the answer to help Fia stop safely.';
+      stopChoices.innerHTML = '';
+
+      for (const choice of stopChallenge.choices) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'choiceBtn';
+        button.textContent = String(choice);
+        button.setAttribute('aria-label', `Answer ${choice}`);
+        button.addEventListener('click', () => answerStopChallenge(choice));
+        stopChoices.appendChild(button);
+      }
+
+      stopOverlay.classList.remove('hidden');
+      helperText.textContent = 'Answer the kindergarten Stop Challenge to pause the path.';
+      updateStopText();
+      playTinyClick();
+    }
+
+    function answerStopChallenge(choice) {
+      if (gameState !== 'stopChallenge' || !stopChallenge) return;
+
+      if (choice === stopChallenge.answer) {
+        stopOverlay.classList.add('hidden');
+        gameState = 'stopped';
+        speedBoost = false;
+        stopTimer = 5;
+        helperText.textContent = 'Fia stopped safely and does a happy hop! Move lanes if you want, or press Space to start running again.';
+        showToast('Safe stop! 🦊', false);
+        startFoxReaction('correct');
+        playCorrectSound();
+      } else {
+        stopOverlay.classList.add('hidden');
+        gameState = 'playing';
+        helperText.textContent = 'Not quite. Fia pauses and shakes her head, then keeps going.';
+        showToast(`Almost! It was ${stopChallenge.answer}`, true);
+        startFoxReaction('wrong');
+        playWrongSound();
+      }
+      stopChallenge = null;
+      updateStopText();
+    }
+
+    function updateStopTimer(dt) {
+      if (gameState !== 'stopped') return;
+      stopTimer -= dt;
+      updateStopText();
+      if (stopTimer <= 0) resumeAfterStop(false);
+    }
+
+    function resumeAfterStop(manual) {
+      if (gameState !== 'stopped') return;
+      gameState = 'playing';
+      stopTimer = 0;
+      helperText.textContent = manual
+        ? 'Fia is running again! Pick the answer lane or hold Up/W to speed up.'
+        : 'Time to scamper again! Pick the answer lane or hold Up/W to speed up.';
+      updateStopText();
+      playTinyClick();
+    }
+
+    function generateKindergartenStopProblem() {
+      const type = randomPick(['count', 'add5', 'takeAway']);
+      let a, b, answer, text;
+
+      if (type === 'count') {
+        answer = randInt(1, 6);
+        text = `Count: ${'⭐'.repeat(answer)}`;
+      } else if (type === 'add5') {
+        a = randInt(0, 5);
+        b = randInt(0, 5 - a);
+        answer = a + b;
+        text = `${a} + ${b} = ?`;
+      } else {
+        a = randInt(1, 6);
+        b = randInt(0, a);
+        answer = a - b;
+        text = `${a} − ${b} = ?`;
+      }
+
+      return { text, answer, choices: makeKindergartenChoices(answer) };
+    }
+
+    function makeKindergartenChoices(answer) {
+      const set = new Set([answer]);
+      const offsets = shuffle([-2, -1, 1, 2, 3, -3]);
+      for (const offset of offsets) {
+        const value = answer + offset;
+        if (value >= 0 && value <= 10) set.add(value);
+        if (set.size === 3) break;
+      }
+      while (set.size < 3) set.add(randInt(0, 10));
+      return shuffle([...set]);
+    }
+
+    function updateHUD() {
+      scoreText.textContent = String(score);
+      starsText.textContent = `${stars}/${goalStars}`;
+      livesText.textContent = '💛'.repeat(Math.max(0, lives));
+      updateStopText();
+    }
+
+    function updateStopText() {
+      if (!stopText) return;
+      if (gameState === 'stopChallenge') stopText.textContent = 'Solve!';
+      else if (gameState === 'stopped') stopText.textContent = `${Math.max(0, Math.ceil(stopTimer))}s`;
+      else stopText.textContent = 'Space';
+    }
+
+    function showToast(message, wrong) {
+      toast.textContent = message;
+      toast.classList.toggle('wrong', wrong);
+      toast.classList.add('show');
+      window.clearTimeout(showToast._timer);
+      showToast._timer = window.setTimeout(() => toast.classList.remove('show'), 980);
+    }
+
+    function burstStars(x, y, z) {
+      const group = new THREE.Group();
+      group.position.set(x, y, z);
+      scene.add(group);
+      const pieces = [];
+      for (let i = 0; i < 18; i++) {
+        const star = createStarMesh(0.09 + Math.random() * 0.05, randomPick([0xffd166, 0xfff6a8, 0xffffff]));
+        star.position.set(0, 0, 0);
+        star.userData.velocity = new THREE.Vector3((Math.random() - 0.5) * 5, 1.5 + Math.random() * 4, (Math.random() - 0.5) * 5);
+        group.add(star);
+        pieces.push(star);
+      }
+      let age = 0;
+      function updateBurst() {
+        const dt = 0.016;
+        age += dt;
+        for (const piece of pieces) {
+          piece.position.addScaledVector(piece.userData.velocity, dt);
+          piece.userData.velocity.y -= 7 * dt;
+          piece.rotation.z += dt * 8;
+          piece.scale.multiplyScalar(0.985);
+        }
+        if (age < 1.05) requestAnimationFrame(updateBurst);
+        else {
+          scene.remove(group);
+          disposeObject(group);
+        }
+      }
+      updateBurst();
+    }
+
+    function cameraShake() {
+      const originalX = camera.position.x;
+      let frame = 0;
+      function shake() {
+        frame++;
+        camera.position.x = originalX + Math.sin(frame * 1.9) * 0.08 * (1 - frame / 16);
+        if (frame < 16) requestAnimationFrame(shake);
+        else camera.position.x = originalX;
+      }
+      shake();
+    }
+
+    function ensureAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioContext.state === 'suspended') audioContext.resume();
+    }
+
+    function tone(freq, duration = 0.12, type = 'sine', volume = 0.08, delay = 0) {
+      if (!audioContext) return;
+      const now = audioContext.currentTime + delay;
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      osc.connect(gain).connect(audioContext.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.03);
+    }
+
+    function playCorrectSound() {
+      tone(523.25, 0.1, 'sine', 0.07, 0);
+      tone(659.25, 0.12, 'sine', 0.075, 0.09);
+      tone(783.99, 0.18, 'triangle', 0.08, 0.18);
+    }
+
+    function playWrongSound() {
+      tone(220, 0.13, 'triangle', 0.06, 0);
+      tone(196, 0.18, 'triangle', 0.045, 0.1);
+    }
+
+    function playTinyClick() { tone(440, 0.045, 'square', 0.018, 0); }
+    function playHopSound() { tone(600, 0.08, 'sine', 0.035, 0); tone(760, 0.1, 'sine', 0.03, 0.06); }
+    function playStartSound() { tone(392, 0.1, 'triangle', 0.06, 0); tone(523.25, 0.13, 'triangle', 0.06, 0.09); }
+    function playWinSound() {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.18, 'triangle', 0.08, i * 0.12));
+    }
+
+    function onResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function disposeObject(obj) {
+      obj.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) child.material.forEach(disposeMaterial);
+          else disposeMaterial(child.material);
+        }
+      });
+    }
+
+    function disposeMaterial(material) {
+      if (material.map) material.map.dispose();
+      material.dispose();
+    }
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randomPick(array) {
+      return array[Math.floor(Math.random() * array.length)];
+    }
+
+    function shuffle(array) {
+      const copy = [...array];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+  </script>
+</body>
+</html>
