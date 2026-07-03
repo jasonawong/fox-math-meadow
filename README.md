@@ -75,7 +75,7 @@ The entire game is inside `index.html`, including:
 |---|---|
 | Left Arrow / A | Move left |
 | Right Arrow / D | Move right |
-| Up Arrow / W | Speed up while held |
+| Up Arrow | Speed up while held |
 | Space | Open Stop Challenge |
 | Enter | Start or restart game |
 
@@ -121,7 +121,7 @@ The Stop Challenge uses easier kindergarten-level math, including:
 
 - Cute low-poly fox character named Fia
 - Animated fox legs while moving forward
-- Speed boost when holding Up Arrow, W, or the Speed button
+- Speed boost when holding Up Arrow or the Speed button
 - Kindergarten-level Stop Challenge using the space bar
 - Celebration hop and flip when a problem is answered correctly
 - Head shake and short pause when a problem is answered incorrectly

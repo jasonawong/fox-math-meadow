@@ -420,7 +420,7 @@
         <p>Help Fia the fox collect 12 shiny stars by choosing the correct answer path.</p>
         <div class="rules">
           <div class="rule">⬅️ ➡️ Move left and right to pick an answer.</div>
-          <div class="rule">Hold ⬆️ or W to help Fia speed up.</div>
+          <div class="rule">Hold ⬆️ to help Fia speed up.</div>
           <div class="rule">Space opens a Stop Challenge. Answer a kindergarten math question to pause the path.</div>
           <div class="rule">Math is 1st-grade friendly: adding and subtracting up to 20.</div>
         </div>
@@ -537,7 +537,7 @@
         if (!event.repeat) handleStopAction();
         return;
       }
-      if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
+      if (event.key === 'ArrowUp') {
         event.preventDefault();
         setSpeedBoost(true);
       }
@@ -545,7 +545,7 @@
     });
 
     window.addEventListener('keyup', (event) => {
-      if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
+      if (event.key === 'ArrowUp') {
         event.preventDefault();
         setSpeedBoost(false);
       }
@@ -1069,7 +1069,7 @@
       if (makeQuestion) spawnNewQuestion();
       else {
         problemText.textContent = 'Ready?';
-        helperText.textContent = 'Move the fox to the answer lane. Hold Up/W to speed up. Press Space for a Stop Challenge.';
+        helperText.textContent = 'Move the fox to the answer lane. Hold Up to speed up. Press Space for a Stop Challenge.';
       }
     }
 
@@ -1082,7 +1082,7 @@
       currentGate = createAnswerGate(activeProblem);
       scene.add(currentGate);
       problemText.textContent = activeProblem.text;
-      helperText.textContent = 'Pick the answer lane. Hold Up/W to speed up. Press Space for a Stop Challenge.';
+      helperText.textContent = 'Pick the answer lane. Hold Up to speed up. Press Space for a Stop Challenge.';
       updateGateHighlight();
     }
 
@@ -1408,7 +1408,7 @@
       if (gameState === 'playing' && wrongPauseTimer <= 0) {
         helperText.textContent = speedBoost
           ? 'Speed boost! Keep picking the right answer lane.'
-          : 'Pick the answer lane. Hold Up/W to speed up. Press Space for a Stop Challenge.';
+          : 'Pick the answer lane. Hold Up to speed up. Press Space for a Stop Challenge.';
       }
     }
 
@@ -1482,8 +1482,8 @@
       gameState = 'playing';
       stopTimer = 0;
       helperText.textContent = manual
-        ? 'Fia is running again! Pick the answer lane or hold Up/W to speed up.'
-        : 'Time to scamper again! Pick the answer lane or hold Up/W to speed up.';
+        ? 'Fia is running again! Pick the answer lane or hold Up to speed up.'
+        : 'Time to scamper again! Pick the answer lane or hold Up to speed up.';
       updateStopText();
       playTinyClick();
     }
